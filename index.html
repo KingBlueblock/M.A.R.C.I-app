@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marci AI Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #111827; /* Fallback color */
+        overflow: hidden;
+      }
+      
+      #background-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: background-image 0.5s ease-in-out;
+      }
+      
+      #background-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(17, 24, 39, 0.7); /* Corresponds to bg-gray-900 with opacity */
+        backdrop-filter: blur(2px);
+        z-index: 0;
+      }
+
+      /* AURA: Scanline Overlay */
+      body::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 1px 3px;
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 1000;
+      }
+
+      @keyframes fade-in {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+      }
+      
+      @keyframes content-enter {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-content-enter {
+        animation: content-enter 0.4s ease-out forwards;
+      }
+
+      @keyframes slide-in-left {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      .animate-slide-in-left {
+        animation: slide-in-left 0.3s ease-out forwards;
+      }
+      
+      @keyframes slide-in-right {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      .animate-slide-in-right {
+        animation: slide-in-right 0.3s ease-out forwards;
+      }
+
+      @keyframes list-item-in {
+        from { opacity: 0; transform: scale(0.9) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      .animate-list-item-in {
+        animation: list-item-in 0.4s ease-out forwards;
+      }
+      
+      @keyframes pulsate-glow {
+        0% { box-shadow: 0 0 10px -5px rgba(var(--shadow-color), 0.2); }
+        50% { box-shadow: 0 0 20px 0px rgba(var(--shadow-color), 0.4); }
+        100% { box-shadow: 0 0 10px -5px rgba(var(--shadow-color), 0.2); }
+      }
+      .animate-pulsate-glow {
+        animation: pulsate-glow 2.5s infinite ease-in-out;
+      }
+      
+      @keyframes pulsate-mic {
+        0% { transform: scale(1); box-shadow: 0 0 5px rgba(var(--shadow-color), 0.2); }
+        50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(var(--shadow-color), 0.6); }
+        100% { transform: scale(1); box-shadow: 0 0 5px rgba(var(--shadow-color), 0.2); }
+      }
+      .animate-pulsate-mic {
+        animation: pulsate-mic 1.5s infinite ease-in-out;
+      }
+
+      /* Avatar Animations */
+      @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+          100% { transform: translateY(0px); }
+      }
+      .animate-float { animation: float 4s ease-in-out infinite; }
+
+      @keyframes blink {
+          0%, 90%, 100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.05); }
+      }
+      .animate-blink { animation: blink 5s infinite; }
+
+      @keyframes happy-bounce {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-10px) scale(1.05); }
+      }
+      .animate-happy-bounce { animation: happy-bounce 0.5s ease-in-out; }
+
+      @keyframes thinking-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+      }
+      .animate-thinking-spin { 
+          transform-origin: 50px 45px;
+          animation: thinking-spin 3s linear infinite; 
+      }
+
+      /* Custom scrollbar for webkit browsers */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 4px; /* For horizontal scrollbars */
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--accent-500, rgba(0, 255, 255, 0.5));
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-400, rgba(0, 255, 255, 0.8));
+      }
+      
+      /* Styles for mobile nav horizontal scrollbar */
+      .mobile-nav-scroll::-webkit-scrollbar {
+        height: 3px;
+      }
+      .mobile-nav-scroll::-webkit-scrollbar-thumb {
+        background: var(--accent-500, rgba(0, 255, 255, 0.4));
+      }
+      /* Hide scrollbar for firefox */
+      .mobile-nav-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-500, rgba(0, 255, 255, 0.4)) transparent;
+      }
+
+
+      /* Styles for Digital Assistant Mode */
+      .assistant-mode-container {
+        background-color: transparent !important;
+        padding: 0;
+        align-items: flex-end; /* Position at bottom */
+      }
+      .assistant-mode-main {
+        width: 95%;
+        max-width: 500px;
+        height: auto;
+        max-height: 70vh;
+        margin-bottom: 2rem;
+        animation: slide-up-assistant 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes slide-up-assistant {
+        from { opacity: 0; transform: translateY(40px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
+    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
+    "pptxgenjs": "https://aistudiocdn.com/pptxgenjs@^4.0.1"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="background-container"></div>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "M.A.R.C.I AI Companion",
+  "description": "A fully interactive, playful, and futuristic AI assistant. Marci features an animated avatar that reacts to interactions, manages tasks, notes, and engages with you through fun mini-games.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "activities": {
+    "digitalAssistant": true
+  }
+}
