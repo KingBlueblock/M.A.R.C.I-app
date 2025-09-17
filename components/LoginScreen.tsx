@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { SocialLink, SocialIcon, TermsContent, AvatarState } from '../types';
 import MarciAvatar from './MarciAvatar';
@@ -23,25 +22,90 @@ const SocialIconComponent: React.FC<{ icon: SocialIcon }> = ({ icon }) => {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, socialLinks, termsContent }) => {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateFields = () => {
     if (!/\S+@\S+\.\S+/.test(email)) {
         setError("Please enter a valid email address.");
-        return;
+        return false;
+    }
+    if (password.length < 6) {
+        setError("Password must be at least 6 characters long.");
+        return false;
+    }
+     if (!agreedToTerms) {
+        setError("You must agree to the Terms and Conditions.");
+        return false;
     }
     setError('');
-    if (agreedToTerms) {
-        // In a real app, you'd perform actual authentication here.
-        // For this mock, we just proceed.
+    return true;
+  }
+
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateFields()) return;
+
+    if (password !== confirmPassword) {
+        setError("Passwords do not match.");
+        return;
+    }
+    
+    try {
+        const users = JSON.parse(localStorage.getItem('marci-users') || '[]');
+        const existingUser = users.find((user: any) => user.email === email);
+        if (existingUser) {
+            setError('An account with this email already exists.');
+            return;
+        }
+        
+        users.push({ email, password }); // Note: Storing password in plain text is unsafe for real apps.
+        localStorage.setItem('marci-users', JSON.stringify(users));
+
         onLoginSuccess();
+
+    } catch (err) {
+        console.error("Error during signup:", err);
+        setError("An unexpected error occurred. Please try again.");
+    }
+  }
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateFields()) return;
+
+    try {
+        const users = JSON.parse(localStorage.getItem('marci-users') || '[]');
+        const user = users.find((user: any) => user.email === email);
+
+        if (!user) {
+            setError('No account found with this email. Please sign up.');
+            return;
+        }
+
+        if (user.password !== password) {
+            setError('Incorrect password. Please try again.');
+            return;
+        }
+        
+        onLoginSuccess();
+    } catch (err) {
+        console.error("Error during login:", err);
+        setError("An unexpected error occurred. Please try again.");
     }
   };
+
+  const switchMode = () => {
+      setError('');
+      setPassword('');
+      setConfirmPassword('');
+      setMode(prev => prev === 'login' ? 'signup' : 'login');
+  }
 
   return (
     <div className="h-screen w-full bg-gradient-to-br from-gray-900 via-slate-900 to-black text-gray-100 flex flex-col items-center justify-center p-4">
@@ -66,7 +130,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, socialLinks, 
                 </h1>
                 <p className="text-gray-400">Your Personal AI Companion</p>
             </div>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={mode === 'login' ? handleLogin : handleSignUp} className="space-y-4">
                 <input
                     type="email"
                     value={email}
@@ -83,6 +147,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, socialLinks, 
                     required
                     className="w-full bg-gray-900/50 border border-white/20 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[--accent-400]"
                 />
+                {mode === 'signup' && (
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm Password"
+                        required
+                        className="w-full bg-gray-900/50 border border-white/20 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[--accent-400]"
+                    />
+                )}
                 {error && <p className="text-sm text-red-400">{error}</p>}
                 <div className="flex items-center">
                     <input
@@ -101,9 +175,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, socialLinks, 
                     disabled={!agreedToTerms}
                     className="w-full bg-[--accent-500] text-white py-3 rounded-lg font-bold hover:bg-[--accent-400] transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
-                    Sign In
+                    {mode === 'login' ? 'Sign In' : 'Create Account'}
                 </button>
             </form>
+             <div className="mt-6 text-center text-sm">
+                <p className="text-gray-400">
+                    {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+                    <button onClick={switchMode} className="font-semibold text-[--accent-300] hover:underline">
+                        {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                    </button>
+                </p>
+            </div>
             {socialLinks.length > 0 && (
                 <div className="mt-8 text-center">
                     <p className="text-sm text-gray-500 mb-3">Follow for updates:</p>

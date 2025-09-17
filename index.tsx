@@ -6,7 +6,7 @@ import App from './App';
 // Register Service Worker for offline capabilities and a better user experience.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(registration => {
         console.log('Service Worker registered successfully:', registration);
       })
