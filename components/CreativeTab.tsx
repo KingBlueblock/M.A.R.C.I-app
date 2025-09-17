@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AvatarState } from '../types';
+import { AvatarState, HistoryItem } from '../types';
 import ImageTab from './ImageTab';
 import Model3DTab from './Model3DTab';
 import MusicTab from './MusicTab';
@@ -7,19 +7,20 @@ import { IconImage, IconModel3D, IconMusic } from './Icons';
 
 interface CreativeTabProps {
   setAvatarState: (state: AvatarState, duration?: number) => void;
+  onSaveHistory: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => void;
 }
 
-const CreativeTab: React.FC<CreativeTabProps> = ({ setAvatarState }) => {
+const CreativeTab: React.FC<CreativeTabProps> = ({ setAvatarState, onSaveHistory }) => {
     const [activeTool, setActiveTool] = useState<'image' | '3d' | 'music'>('image');
 
     const renderContent = () => {
         switch(activeTool) {
             case 'image':
-                return <ImageTab setAvatarState={setAvatarState} />;
+                return <ImageTab setAvatarState={setAvatarState} onSaveHistory={onSaveHistory} />;
             case '3d':
                 return <Model3DTab setAvatarState={setAvatarState} />;
             case 'music':
-                return <MusicTab setAvatarState={setAvatarState} />;
+                return <MusicTab setAvatarState={setAvatarState} onSaveHistory={onSaveHistory} />;
             default:
                 return null;
         }

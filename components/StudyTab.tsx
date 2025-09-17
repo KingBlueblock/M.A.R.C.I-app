@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { AvatarState } from '../types';
+import { AvatarState, HistoryItem, HistoryItemType } from '../types';
 import { generateStudyNotes, generatePptxContent } from '../services/geminiService';
 import PptxGenJS from 'pptxgenjs';
 
 interface StudyTabProps {
   setAvatarState: (state: AvatarState, duration?: number) => void;
+  onSaveHistory: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => void;
 }
 
-const StudyNotes: React.FC<StudyTabProps> = ({ setAvatarState }) => {
+const StudyNotes: React.FC<StudyTabProps> = ({ setAvatarState, onSaveHistory }) => {
     const [topic, setTopic] = useState('');
     const [notes, setNotes] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +23,14 @@ const StudyNotes: React.FC<StudyTabProps> = ({ setAvatarState }) => {
             const generatedNotes = await generateStudyNotes(topic);
             setNotes(generatedNotes);
             setAvatarState(AvatarState.Happy);
+
+            // Save to unified history
+            onSaveHistory({
+                type: HistoryItemType.StudyNotes,
+                title: `Notes: ${topic}`,
+                prompt: { topic },
+                content: { notes: generatedNotes },
+            });
         } catch (error: any) {
             setNotes(error.message); // Display error in the notes area
             setAvatarState(AvatarState.Idle);
@@ -88,7 +97,7 @@ const StudyNotes: React.FC<StudyTabProps> = ({ setAvatarState }) => {
     );
 };
 
-const PptxGenerator: React.FC<StudyTabProps> = ({ setAvatarState }) => {
+const PptxGenerator: React.FC<Pick<StudyTabProps, 'setAvatarState'>> = ({ setAvatarState }) => {
     const [pptxTopic, setPptxTopic] = useState('');
     const [isLoadingPptx, setIsLoadingPptx] = useState(false);
     const [status, setStatus] = useState('');
@@ -154,7 +163,7 @@ const PptxGenerator: React.FC<StudyTabProps> = ({ setAvatarState }) => {
     );
 }
 
-const StudyTab: React.FC<StudyTabProps> = ({ setAvatarState }) => {
+const StudyTab: React.FC<StudyTabProps> = ({ setAvatarState, onSaveHistory }) => {
     const [activeTool, setActiveTool] = useState<'notes' | 'pptx'>('notes');
 
     return (
@@ -168,7 +177,7 @@ const StudyTab: React.FC<StudyTabProps> = ({ setAvatarState }) => {
             </div>
 
             <div className="flex-grow">
-                {activeTool === 'notes' ? <StudyNotes setAvatarState={setAvatarState} /> : <PptxGenerator setAvatarState={setAvatarState} />}
+                {activeTool === 'notes' ? <StudyNotes setAvatarState={setAvatarState} onSaveHistory={onSaveHistory} /> : <PptxGenerator setAvatarState={setAvatarState} />}
             </div>
         </div>
     );

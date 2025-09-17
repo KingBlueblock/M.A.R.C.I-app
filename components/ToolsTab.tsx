@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import JSZip from 'jszip';
-import { AvatarState } from '../types';
+import { AvatarState, HistoryItem } from '../types';
 import MinecraftTab from './MinecraftTab';
 import SpikePrimeTab from './SpikePrimeTab';
 import LocationTab from './LocationTab';
@@ -8,9 +8,10 @@ import { IconMinecraft, IconSpike, IconLocation, IconFiles } from './Icons';
 
 interface ToolsTabProps {
   setAvatarState: (state: AvatarState, duration?: number) => void;
+  onSaveHistory: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => void;
 }
 
-const FileUtils: React.FC<ToolsTabProps> = ({ setAvatarState }) => {
+const FileUtils: React.FC<Pick<ToolsTabProps, 'setAvatarState'>> = ({ setAvatarState }) => {
     const [zipFile, setZipFile] = useState<File | null>(null);
     const [isLoadingZip, setIsLoadingZip] = useState(false);
     const [status, setStatus] = useState('');
@@ -65,12 +66,12 @@ const FileUtils: React.FC<ToolsTabProps> = ({ setAvatarState }) => {
 };
 
 
-const ToolsTab: React.FC<ToolsTabProps> = ({ setAvatarState }) => {
+const ToolsTab: React.FC<ToolsTabProps> = ({ setAvatarState, onSaveHistory }) => {
     const [activeTool, setActiveTool] = useState<'minecraft' | 'spike' | 'location' | 'files'>('minecraft');
 
     const renderContent = () => {
         switch(activeTool) {
-            case 'minecraft': return <MinecraftTab setAvatarState={setAvatarState} />;
+            case 'minecraft': return <MinecraftTab setAvatarState={setAvatarState} onSaveHistory={onSaveHistory} />;
             case 'spike': return <SpikePrimeTab />;
             case 'location': return <LocationTab />;
             case 'files': return <FileUtils setAvatarState={setAvatarState} />;

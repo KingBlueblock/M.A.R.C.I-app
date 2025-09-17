@@ -1,15 +1,17 @@
 
 
+
 import React, { useState, useRef } from 'react';
-import { AvatarState } from '../types';
+import { AvatarState, HistoryItem, HistoryItemType } from '../types';
 import { generateLyrics, generateInstrumentalIdea } from '../services/geminiService';
 import { IconMusic } from './Icons';
 
 interface MusicTabProps {
   setAvatarState: (state: AvatarState, duration?: number) => void;
+  onSaveHistory: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => void;
 }
 
-const MusicTab: React.FC<MusicTabProps> = ({ setAvatarState }) => {
+const MusicTab: React.FC<MusicTabProps> = ({ setAvatarState, onSaveHistory }) => {
     const [lyricsTopic, setLyricsTopic] = useState('');
     const [lyricsGenre, setLyricsGenre] = useState('Pop');
     const [lyricsMood, setLyricsMood] = useState('Happy');
@@ -37,6 +39,15 @@ const MusicTab: React.FC<MusicTabProps> = ({ setAvatarState }) => {
             const result = await generateLyrics(lyricsTopic, lyricsGenre, lyricsMood);
             setGeneratedLyrics(result);
             setAvatarState(AvatarState.Happy);
+            
+            // Save to unified history
+            onSaveHistory({
+                type: HistoryItemType.MusicLyrics,
+                title: `Lyrics: ${lyricsTopic}`,
+                prompt: { topic: lyricsTopic, genre: lyricsGenre, mood: lyricsMood },
+                content: { lyrics: result },
+            });
+
         } catch (error: any) {
             setGeneratedLyrics(error.message);
             setAvatarState(AvatarState.Idle);

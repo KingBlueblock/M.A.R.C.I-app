@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { AvatarState } from '../types';
+import { AvatarState, HistoryItem, HistoryItemType } from '../types';
 import { generateImage } from '../services/geminiService';
 
 interface ImageTabProps {
   setAvatarState: (state: AvatarState, duration?: number) => void;
+  onSaveHistory: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => void;
 }
 
-const ImageTab: React.FC<ImageTabProps> = ({ setAvatarState }) => {
+const ImageTab: React.FC<ImageTabProps> = ({ setAvatarState, onSaveHistory }) => {
   const [prompt, setPrompt] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +28,15 @@ const ImageTab: React.FC<ImageTabProps> = ({ setAvatarState }) => {
       const result = await generateImage(prompt);
       setImageUrl(result);
       setAvatarState(AvatarState.Happy);
+
+      // Save to unified history
+      onSaveHistory({
+        type: HistoryItemType.Image,
+        title: prompt.length > 50 ? `${prompt.substring(0, 47)}...` : prompt,
+        prompt: prompt,
+        content: { imageUrl: result },
+      });
+
     } catch (e: any) {
       setError(e.message);
       setAvatarState(AvatarState.Idle);

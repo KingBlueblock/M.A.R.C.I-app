@@ -22,6 +22,11 @@ const MarciAvatar: React.FC<MarciAvatarProps> = ({ state }) => {
             <stop offset="70%" style={{ stopColor: 'var(--accent-400)', stopOpacity: 0.1 }} />
             <stop offset="100%" style={{ stopColor: 'var(--accent-400)', stopOpacity: 0 }} />
           </radialGradient>
+          {/* Fix: Added missing gradient definition for the avatar's head to resolve a critical rendering error. */}
+          <radialGradient id="head-gradient" cx="50%" cy="40%" r="60%" fx="50%" fy="30%">
+            <stop offset="0%" style={{ stopColor: '#4a5568', stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: '#2d3748', stopOpacity: 1 }} />
+          </radialGradient>
            <filter id="glow-filter">
             <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
             <feMerge>

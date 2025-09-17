@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import JSZip from 'jszip';
-import { AvatarState } from '../types';
+import { AvatarState, HistoryItem, HistoryItemType } from '../types';
 import { generateFullMinecraftAddon, editMinecraftFile } from '../services/geminiService';
 
 interface MinecraftTabProps {
   setAvatarState: (state: AvatarState, duration?: number) => void;
+  onSaveHistory: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => void;
 }
 
-const MinecraftTab: React.FC<MinecraftTabProps> = ({ setAvatarState }) => {
+const MinecraftTab: React.FC<MinecraftTabProps> = ({ setAvatarState, onSaveHistory }) => {
     const [activeTool, setActiveTool] = useState<'generator' | 'editor'>('generator');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -37,6 +38,14 @@ const MinecraftTab: React.FC<MinecraftTabProps> = ({ setAvatarState }) => {
             const result = await generateFullMinecraftAddon(generatorPrompt);
             setGeneratedFiles(result);
             setAvatarState(AvatarState.Happy);
+
+            // Save to unified history
+            onSaveHistory({
+                type: HistoryItemType.MinecraftAddon,
+                title: `Addon: ${generatorPrompt.substring(0, 40)}${generatorPrompt.length > 40 ? '...' : ''}`,
+                prompt: generatorPrompt,
+                content: { files: result },
+            });
         } catch (e: any) {
             setError(e.message);
             setAvatarState(AvatarState.Idle);

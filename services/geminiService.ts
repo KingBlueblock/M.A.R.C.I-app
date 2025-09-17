@@ -1,11 +1,23 @@
 import { GoogleGenAI, Chat, Type } from "@google/genai";
 import { ChatMessage, Task, Note } from '../types';
 
-if (!process.env.API_KEY) {
-  console.error("API_KEY environment variable not set.");
-}
+let ai: GoogleGenAI;
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+/**
+ * Lazily initializes and returns the GoogleGenAI instance.
+ * This prevents the app from crashing on load if the API key is not yet available.
+ */
+const getAi = (): GoogleGenAI => {
+    if (!ai) {
+        if (!process.env.API_KEY) {
+            console.error("API_KEY environment variable not set. Gemini API calls will fail.");
+            // We proceed, but the GenAI constructor will likely throw an error when used.
+            // This is better than crashing the entire application load.
+        }
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    }
+    return ai;
+};
 
 /**
  * A centralized handler for API errors to provide user-friendly messages.
@@ -59,7 +71,7 @@ const extractJson = (text: string): any => {
 
 
 export const initChat = (systemInstruction: string): Chat => {
-  return ai.chats.create({
+  return getAi().chats.create({
     model: 'gemini-2.5-flash',
     config: {
       systemInstruction: systemInstruction,
@@ -69,7 +81,7 @@ export const initChat = (systemInstruction: string): Chat => {
 
 export const getFunFact = async (): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: 'Tell me a surprising and fun fact about technology or space.',
             config: {
@@ -84,7 +96,7 @@ export const getFunFact = async (): Promise<string> => {
 
 export const getEmojiRiddle = async (): Promise<{ riddle: string, answer: string }> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: 'Create a clever and challenging emoji-only riddle about a common object, movie, or concept. Provide the answer separately.',
             config: {
@@ -107,7 +119,7 @@ export const getEmojiRiddle = async (): Promise<{ riddle: string, answer: string
 
 export const getEmojiFusion = async (emoji1: string, emoji2: string): Promise<{ name: string, emoji: string, description: string }> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Creatively fuse these two emojis: ${emoji1} and ${emoji2}. Give the fused concept a new name, a new single emoji that represents it, and a short, fun description.`,
             config: {
@@ -131,7 +143,7 @@ export const getEmojiFusion = async (emoji1: string, emoji2: string): Promise<{ 
 
 export const getTicTacToeMove = async (board: (string | null)[]): Promise<{ move: number }> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `You are playing Tic Tac Toe. The current board is represented by this array: ${JSON.stringify(board)}. 'X' is the human player, 'O' is you (the AI). It's your turn. Your priorities are: 1. Win if you have a winning move. 2. Block the opponent if they are about to win. 3. Take the center square if available. 4. Take a corner square. 5. Take any remaining side square. Based on these priorities, return the board index (0-8) of the single best move for 'O'.`,
             config: {
@@ -154,7 +166,7 @@ export const getTicTacToeMove = async (board: (string | null)[]): Promise<{ move
 
 export const generateLyrics = async (topic: string, genre: string, mood: string): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Write song lyrics about "${topic}". The genre should be ${genre} and the mood should be ${mood}. Include sections like [Verse 1], [Chorus], [Verse 2], [Bridge], and [Outro].`,
         });
@@ -166,7 +178,7 @@ export const generateLyrics = async (topic: string, genre: string, mood: string)
 
 export const generateInstrumentalIdea = async (description: string): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Based on this song description: "${description}", describe a detailed instrumental arrangement. Mention specific instruments, tempo, key, and the overall structure and feeling of the music. For example, "A slow, melancholic piano melody in C minor..."`,
         });
@@ -179,7 +191,7 @@ export const generateInstrumentalIdea = async (description: string): Promise<str
 
 export const generateImage = async (prompt: string): Promise<string> => {
     try {
-      const response = await ai.models.generateImages({
+      const response = await getAi().models.generateImages({
         model: 'imagen-4.0-generate-001',
         prompt: prompt,
         config: {
@@ -201,7 +213,7 @@ export const generateImage = async (prompt: string): Promise<string> => {
 export const analyzeMood = async (text: string): Promise<{ mood: string }> => {
     if (!text) throw new Error("No text provided for mood analysis.");
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Analyze the mood of the following text and classify it into one of these categories: [Happy, Calm, Focused, Energetic, Default]. Text: "${text}"`,
             config: {
@@ -223,7 +235,7 @@ export const analyzeMood = async (text: string): Promise<{ mood: string }> => {
 
 export const generateStudyNotes = async (topic: string): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Generate comprehensive, well-structured study notes on the topic: "${topic}". Use markdown for formatting, including headings, subheadings, bold text for key terms, and bullet points for lists. The notes should be detailed and easy to understand for a student.`,
         });
@@ -235,7 +247,7 @@ export const generateStudyNotes = async (topic: string): Promise<string> => {
 
 export const generatePptxContent = async (topic: string): Promise<{ title: string, slides: Array<{ title: string, points: string[], notes: string }> }> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Create content for a 5-slide presentation on the topic: "${topic}". Provide a main title for the presentation. For each slide, provide a slide title, 3-4 bullet points (as an array of strings), and detailed speaker notes.`,
             config: {
@@ -272,7 +284,7 @@ export const categorizeChat = async (history: ChatMessage[]): Promise<{ title: s
     const conversationText = history.map(msg => `${msg.sender === 'user' ? 'User' : 'Marci'}: ${msg.text}`).join('\n');
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Based on the following conversation, generate a short, relevant title (less than 5 words) and pick one category from this list: [Productivity, Creative, Learning, Casual]. Conversation: \n\n${conversationText}`,
             config: {
@@ -299,7 +311,7 @@ export const categorizeChat = async (history: ChatMessage[]): Promise<{ title: s
 
 export const generateFullMinecraftAddon = async (prompt: string): Promise<Record<string, string>> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `You are an expert Minecraft Bedrock Edition Add-on developer. Based on the user's detailed prompt, generate all necessary files for a complete .mcaddon.
 - Create a unique, snake_case identifier for all custom entities, items, etc., based on the user's prompt.
@@ -347,7 +359,7 @@ User Prompt: "${prompt}"`,
 
 export const editMinecraftFile = async (fileContent: string, instruction: string): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `You are an expert Minecraft Bedrock Edition Add-on developer. The user has provided a JSON file and an instruction. Modify the JSON file according to the instruction and return only the raw, updated JSON content. Do not add explanations or markdown.
 
@@ -368,7 +380,7 @@ ${fileContent}
 
 export const getSongRecommendation = async (artists: string[]): Promise<{ song: string, artist: string, spotifyTrackId: string }> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Based on these favorite artists: ${artists.join(', ')}, recommend one song of the day. Provide the song title, artist name, and the official Spotify Track ID.`,
             config: {
@@ -392,7 +404,7 @@ export const getSongRecommendation = async (artists: string[]): Promise<{ song: 
 
 export const getWeather = async (latitude: number, longitude: number): Promise<{ temperature: string, condition:string, city: string }> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
        model: "gemini-2.5-flash",
        contents: `What is the current weather in latitude ${latitude}, longitude ${longitude}? Respond with only a JSON object with keys "city", "temperature" (string with unit, e.g. "21°C"), and "condition" (e.g. "Sunny"). Do not include any other text or markdown formatting.`,
        config: {
@@ -410,7 +422,7 @@ export const getWeather = async (latitude: number, longitude: number): Promise<{
 
 export const getAiUserResponse = async (message: string, persona: string): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `You are acting as a user in a chat application. Your username is '${persona}'. The other user just sent this message: "${message}". Write a short, casual, and believable reply.`,
             config: {
@@ -426,7 +438,7 @@ export const getAiUserResponse = async (message: string, persona: string): Promi
 export const getProactiveSuggestion = async (): Promise<string> => {
     try {
         const timeOfDay = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening';
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `It's the ${timeOfDay}. Generate a single, short, friendly, and proactive suggestion or greeting for the user of an AI assistant app. Suggest a fun activity from the app (like generating an image, creating a song, or getting a fun fact). Keep it under 20 words. Example: "Good morning! How about we create a song in the Music Studio today?"`,
             config: { thinkingConfig: { thinkingBudget: 0 } }
@@ -440,7 +452,7 @@ export const getProactiveSuggestion = async (): Promise<string> => {
 
 export const getThemeSuggestion = async (context: string, themeNames: string[]): Promise<{ themeName: string, reason: string }> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Based on the user's recent activity ("${context}"), suggest a color theme that fits the mood.
             Available themes: ${themeNames.join(', ')}.

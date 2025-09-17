@@ -9,6 +9,7 @@ export enum Tab {
   Settings = 'SETTINGS',
   Admin = 'ADMIN',
   Chat = 'CHAT', // Special case for tab change logic.
+  Social = 'SOCIAL',
 }
 
 export enum AvatarState {
@@ -97,3 +98,89 @@ export interface TermsContent {
     title: string;
     content: string;
 }
+
+// --- Unified History Types ---
+
+export enum HistoryItemType {
+  Chat = 'CHAT',
+  Image = 'IMAGE',
+  MusicLyrics = 'MUSIC_LYRICS',
+  StudyNotes = 'STUDY_NOTES',
+  MinecraftAddon = 'MINECRAFT_ADDON',
+}
+
+export interface BaseHistoryItem {
+  id: string;
+  type: HistoryItemType;
+  title: string;
+  createdAt: number;
+}
+
+export interface ChatHistoryItem extends BaseHistoryItem {
+  type: HistoryItemType.Chat;
+  sessionId: string;
+  category: string;
+  isFavorited?: boolean;
+  // Fix: Add 'prompt?: never' to satisfy the discriminated union's excess property check.
+  // This makes 'prompt' a known key on all HistoryItem types, preventing errors when creating
+  // other history items that *do* have a prompt.
+  prompt?: never;
+  // Fix: Add 'content?: never' to satisfy discriminated union checks for other history item types that have a 'content' property.
+  content?: never;
+}
+
+export interface ImageHistoryItem extends BaseHistoryItem {
+  type: HistoryItemType.Image;
+  prompt: string;
+  content: {
+    imageUrl: string;
+  };
+  // Fix: Add chat-specific properties as optional 'never' types to satisfy discriminated union checks.
+  sessionId?: never;
+  category?: never;
+  isFavorited?: never;
+}
+
+export interface MusicLyricsHistoryItem extends BaseHistoryItem {
+  type: HistoryItemType.MusicLyrics;
+  prompt: {
+    topic: string;
+    genre: string;
+    mood: string;
+  };
+  content: {
+    lyrics: string;
+  };
+  // Fix: Add chat-specific properties as optional 'never' types to satisfy discriminated union checks.
+  sessionId?: never;
+  category?: never;
+  isFavorited?: never;
+}
+
+export interface StudyNotesHistoryItem extends BaseHistoryItem {
+  type: HistoryItemType.StudyNotes;
+  prompt: {
+    topic: string;
+  };
+  content: {
+    notes: string;
+  };
+  // Fix: Add chat-specific properties as optional 'never' types to satisfy discriminated union checks.
+  sessionId?: never;
+  category?: never;
+  isFavorited?: never;
+}
+
+export interface MinecraftAddonHistoryItem extends BaseHistoryItem {
+  type: HistoryItemType.MinecraftAddon;
+  prompt: string;
+  content: {
+    files: Record<string, string>;
+  };
+  // Fix: Add chat-specific properties as optional 'never' types to satisfy discriminated union checks.
+  sessionId?: never;
+  category?: never;
+  isFavorited?: never;
+}
+
+export type HistoryItem = ChatHistoryItem | ImageHistoryItem | MusicLyricsHistoryItem | StudyNotesHistoryItem | MinecraftAddonHistoryItem;

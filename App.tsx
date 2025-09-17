@@ -1,7 +1,6 @@
-
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Tab, AvatarState, Task, Note, ChatMessage, Theme, MoodTheme, ChatSession, UserProfile, BroadcastMessage, SocialLink, TermsContent } from './types';
+// Fix: Added HistoryItemType to the import to resolve a type error when creating a CHAT history item.
+import { Tab, AvatarState, Task, Note, ChatMessage, Theme, MoodTheme, ChatSession, UserProfile, BroadcastMessage, SocialLink, TermsContent, HistoryItem, HistoryItemType, ChatHistoryItem } from './types';
 import HomeTab from './components/HomeTab';
 import ProductivityTab from './components/ProductivityTab';
 import CreativeTab from './components/CreativeTab';
@@ -11,9 +10,11 @@ import StudyTab from './components/StudyTab';
 import ToolsTab from './components/ToolsTab';
 import HistoryTab from './components/HistoryTab';
 import AdminTab from './components/AdminTab';
+import SocialTab from './components/SocialTab';
 import LoginScreen from './components/LoginScreen';
+import VoiceCommander from './components/VoiceCommander';
 // Fix: Added missing icon imports to resolve build errors.
-import { IconHome, IconProductivity, IconCreative, IconStudy, IconGames, IconTools, IconHistory, IconSettings } from './components/Icons';
+import { IconHome, IconProductivity, IconCreative, IconStudy, IconGames, IconTools, IconHistory, IconSettings, IconSocial } from './components/Icons';
 import { Chat } from '@google/genai';
 import { initChat, analyzeMood, categorizeChat, getAiUserResponse, getThemeSuggestion } from './services/geminiService';
 import { speak, stopSpeaking } from './services/ttsService';
@@ -248,6 +249,7 @@ const App: React.FC = () => {
     const [tasks, setTasks] = usePersistentState<Task[]>('marci-tasks', []);
     const [notes, setNotes] = usePersistentState<Note[]>('marci-notes', []);
     const [chatSessions, setChatSessions] = usePersistentState<Record<string, ChatSession>>('marci-chat-sessions', {});
+    const [historyItems, setHistoryItems] = usePersistentState<HistoryItem[]>('marci-history', []);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
     // Chat State
@@ -373,7 +375,21 @@ const App: React.FC = () => {
         setActiveTab(Tab.Home);
     };
 
+    const handleSaveHistory = (item: Omit<HistoryItem, 'id' | 'createdAt'>) => {
+        const newItem: HistoryItem = {
+            ...item,
+            id: crypto.randomUUID(),
+            createdAt: Date.now(),
+        } as HistoryItem;
+        setHistoryItems(prev => [newItem, ...prev]);
+    };
+
     const handleSaveSummary = async (chatId: string, history: ChatMessage[]) => {
+        // Prevent saving blank chats to history
+        if (!history.some(msg => msg.sender === 'user')) {
+            return;
+        }
+
         const result = await categorizeChat(history);
         if (result && chatId) {
             setChatSessions(prev => ({
@@ -384,13 +400,33 @@ const App: React.FC = () => {
                     category: result.category,
                 }
             }));
+             // Add to unified history if it doesn't exist yet
+            if (!historyItems.some(item => item.type === 'CHAT' && (item as ChatHistoryItem).sessionId === chatId)) {
+                 handleSaveHistory({
+                    type: HistoryItemType.Chat,
+                    sessionId: chatId,
+                    title: result.title,
+                    category: result.category,
+                    isFavorited: false,
+                });
+            }
         }
+    };
+
+    const handleToggleFavorite = (itemId: string) => {
+        setHistoryItems(prev => prev.map(item => {
+            if (item.id === itemId && item.type === HistoryItemType.Chat) {
+                return { ...item, isFavorited: !item.isFavorited };
+            }
+            return item;
+        }));
     };
     
     const handleClearMemory = () => {
         setTasks([]);
         setNotes([]);
         setChatSessions({});
+        setHistoryItems([]);
         setCurrentChatId(null);
         handleNewChat();
     }
@@ -398,6 +434,22 @@ const App: React.FC = () => {
     const handleAccessAdminPanel = () => {
         // Here you could have a check for user role if you had a real backend
         setActiveTab(Tab.Admin);
+    };
+
+    const handleStartSocialChat = (username: string) => {
+        const newId = crypto.randomUUID();
+        const newSession: ChatSession = {
+            id: newId,
+            userId: 'local',
+            title: `Chat with ${username}`,
+            category: 'Social',
+            createdAt: Date.now(),
+            history: [],
+            participants: [userProfile.username, username],
+        };
+        setChatSessions(prev => ({ ...prev, [newId]: newSession }));
+        setCurrentChatId(newId);
+        setActiveTab(Tab.Home); // Switch to the chat view
     };
 
     const handleActivityForThemeSuggestion = useCallback(async (context: string) => {
@@ -418,12 +470,9 @@ const App: React.FC = () => {
         }
     }, [colorThemeName, setSuggestedTheme]);
 
-
-    // Derived list of sessions for history tab
-    const sortedSessions = useMemo(() => Object.values(chatSessions).sort((a, b) => b.createdAt - a.createdAt), [chatSessions]);
-
     const tabs = useMemo(() => [
         { id: Tab.Home, icon: IconHome, label: 'Home' },
+        { id: Tab.Social, icon: IconSocial, label: 'Social' },
         { id: Tab.Productivity, icon: IconProductivity, label: 'Productivity' },
         { id: Tab.Creative, icon: IconCreative, label: 'Creative' },
         { id: Tab.Study, icon: IconStudy, label: 'Study' },
@@ -479,6 +528,8 @@ const App: React.FC = () => {
                     chatPersona={chatPersona}
                     setChatPersona={setChatPersona}
                 />;
+            case Tab.Social:
+                return <SocialTab onStartChat={handleStartSocialChat} />;
             case Tab.Productivity:
                 return <ProductivityTab 
                     tasks={tasks}
@@ -489,23 +540,30 @@ const App: React.FC = () => {
                     onAddNote={(title, content) => setNotes(n => [{ id: Date.now(), title, content }, ...n])}
                     onDeleteNote={(id) => setNotes(n => n.filter(note => note.id !== id))}
                 />;
-            case Tab.Creative: return <CreativeTab setAvatarState={setAvatarStateWithTimeout} />;
-            case Tab.Study: return <StudyTab setAvatarState={setAvatarStateWithTimeout} />;
+            case Tab.Creative: return <CreativeTab setAvatarState={setAvatarStateWithTimeout} onSaveHistory={handleSaveHistory} />;
+            case Tab.Study: return <StudyTab setAvatarState={setAvatarStateWithTimeout} onSaveHistory={handleSaveHistory} />;
             case Tab.Games: return <GamesTab setAvatarState={setAvatarStateWithTimeout} />;
-            case Tab.Tools: return <ToolsTab setAvatarState={setAvatarStateWithTimeout} />;
+            case Tab.Tools: return <ToolsTab setAvatarState={setAvatarStateWithTimeout} onSaveHistory={handleSaveHistory} />;
             case Tab.History: return <HistoryTab
-                sessions={sortedSessions}
+                items={historyItems}
+                chatSessions={chatSessions}
                 currentChatId={currentChatId}
-                onSelect={(id) => { setCurrentChatId(id); setActiveTab(Tab.Home); }}
+                onSelectChat={(id) => { setCurrentChatId(id); setActiveTab(Tab.Home); }}
                 onDelete={(id) => {
-                    setChatSessions(prev => {
-                        const newSessions = {...prev};
-                        delete newSessions[id];
-                        return newSessions;
-                    });
-                    if (currentChatId === id) handleNewChat();
+                    const itemToDelete = historyItems.find(item => item.id === id);
+                    if (itemToDelete && itemToDelete.type === 'CHAT') {
+                        // Also delete the chat session data
+                        setChatSessions(prev => {
+                            const newSessions = {...prev};
+                            delete newSessions[(itemToDelete as ChatHistoryItem).sessionId];
+                            return newSessions;
+                        });
+                        if (currentChatId === (itemToDelete as ChatHistoryItem).sessionId) handleNewChat();
+                    }
+                    setHistoryItems(prev => prev.filter(item => item.id !== id));
                 }}
                 onNew={handleNewChat}
+                onToggleFavorite={handleToggleFavorite}
             />;
              case Tab.Settings: return <SettingsTab 
                 theme={theme} setTheme={setTheme}
@@ -593,6 +651,7 @@ const App: React.FC = () => {
                     ))}
                 </div>
             </nav>
+            <VoiceCommander onNavigate={handleTabChange} onNewChat={handleNewChat} />
         </div>
     );
 };
